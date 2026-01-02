@@ -1,0 +1,43 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Animasi putar lambat untuk icon musik */
+@keyframes spin-slow {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.animate-spin-slow {
+    animation: spin-slow 4s linear infinite;
+}
+
+/* === GLOBAL ROYAL UPGRADE === */
+
+/* 1. Scrollbar Emas (Chrome/Safari/Edge) */
+::-webkit-scrollbar {
+    width: 8px; /* Lebar scrollbar */
+}
+::-webkit-scrollbar-track {
+    background: #f5f5f0; /* Warna jalur */
+}
+::-webkit-scrollbar-thumb {
+    background-color: #A0896E; /* Warna emas */
+    border-radius: 20px;
+    border: 2px solid #f5f5f0;
+}
+
+/* 2. Warna Seleksi Teks (Block Teks) */
+::selection {
+    background-color: #A0896E;
+    color: white;
+}
+
+/* 3. Smooth Scroll Wajib */
+html {
+    scroll-behavior: smooth;
+}
