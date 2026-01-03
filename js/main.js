@@ -31,23 +31,27 @@ function handlePreloader() {
     const preloader = document.getElementById('preloader');
     if (preloader) {
         window.addEventListener('load', () => {
+            // Delay sedikit agar aset benar-benar siap
             setTimeout(() => {
                 preloader.style.opacity = '0';
+                preloader.style.transition = 'opacity 0.5s ease-out';
+                
+                // Hapus elemen setelah transisi selesai
                 setTimeout(() => {
                     preloader.style.display = 'none';
                     // Trigger animasi AOS ulang setelah loading selesai
                     if (typeof AOS !== 'undefined') AOS.refresh();
-                }, 1000);
-            }, 1000);
+                }, 500); // Waktu sama dengan durasi transition CSS
+            }, 800);
         });
     }
 }
 
 
 // === 3. AUDIO PLAYER & COVER LOGIC ===
-const audio = document.getElementById('bg-music'); // ID audio tag
-const musicBtn = document.getElementById('music-control'); // ID tombol bulat
-const opening = document.getElementById('opening'); // ID section cover
+const audio = document.getElementById('bg-music');
+const musicBtn = document.getElementById('music-control');
+const opening = document.getElementById('opening');
 let isPlaying = false;
 
 // Fungsi Buka Undangan
@@ -55,10 +59,11 @@ function openInvitation() {
     // 1. Geser Cover ke Atas
     if (opening) {
         opening.style.transform = 'translateY(-100%)';
+        opening.style.transition = 'transform 1s ease-in-out';
     }
 
     // 2. Enable Scroll pada Body
-    document.body.style.overflow = 'auto'; // Cara lebih simpel daripada classList
+    document.body.style.overflow = 'auto';
 
     // 3. Mainkan Musik
     playMusic();
@@ -66,7 +71,11 @@ function openInvitation() {
     // 4. Tampilkan Tombol Musik
     if (musicBtn) {
         musicBtn.classList.remove('hidden');
-        musicBtn.classList.add('flex'); // Pastikan display flex agar center
+        musicBtn.classList.add('flex');
+        // Fade in tombol musik
+        setTimeout(() => {
+            musicBtn.style.opacity = '1';
+        }, 100);
     }
 }
 
@@ -77,7 +86,7 @@ function playMusic() {
             isPlaying = true;
             updateMusicIcon();
         }).catch(err => {
-            console.log("Autoplay ditahan browser. Menunggu interaksi user.");
+            console.warn("Autoplay ditahan browser. Menunggu interaksi user.");
             isPlaying = false;
             updateMusicIcon();
         });
@@ -93,7 +102,7 @@ function pauseMusic() {
     }
 }
 
-// Update Icon Tombol Musik (Berputar/Diam)
+// Update Icon Tombol Musik
 function updateMusicIcon() {
     if (!musicBtn) return;
 
@@ -103,23 +112,19 @@ function updateMusicIcon() {
         musicBtn.classList.add('animate-spin-slow');
         musicBtn.style.opacity = '1';
     } else {
-        // Icon Pause / Stop
+        // Icon Pause
         musicBtn.innerHTML = '<i data-lucide="pause" class="text-gray-400 w-5 h-5 md:w-6 md:h-6"></i>';
         musicBtn.classList.remove('animate-spin-slow');
         musicBtn.style.opacity = '0.7';
     }
-    // Re-render icon lucide karena innerHTML berubah
+    // Re-render icon lucide
     if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
 // Event Listener Tombol Musik
 if (musicBtn) {
     musicBtn.addEventListener('click', () => {
-        if (isPlaying) {
-            pauseMusic();
-        } else {
-            playMusic();
-        }
+        isPlaying ? pauseMusic() : playMusic();
     });
 }
 
@@ -130,14 +135,14 @@ function handleGuestName() {
     const tamuRaw = urlParams.get('to');
     
     if (tamuRaw) {
-        // Decode agar spasi (%20) terbaca normal
-        // Gunakan DOMPurify jika ingin lebih aman dari XSS, tapi escape sederhana cukup untuk nama
-        const tamu = decodeURIComponent(tamuRaw).replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        // Decode URI & Sanitasi Dasar
+        // textContent lebih aman dari XSS dibanding innerText/innerHTML
+        const tamu = decodeURIComponent(tamuRaw);
 
         // Ganti nama di Cover
         const guestElement = document.getElementById('namaTamu');
         if (guestElement) {
-            guestElement.innerText = tamu;
+            guestElement.textContent = tamu;
         }
 
         // Isi otomatis di Form RSVP
@@ -149,69 +154,75 @@ function handleGuestName() {
 }
 
 
-// === 5. COUNTDOWN TIMER ===
+// === 5. COUNTDOWN TIMER (OPTIMIZED) ===
 function initCountdown() {
-    // Set Tanggal Acara (Format: Bulan Tanggal, Tahun Jam:Menit:Detik)
-    const weddingDate = new Date("Dec 20, 2026 08:00:00").getTime();
+    const targetDate = new Date("Dec 20, 2026 08:00:00").getTime();
     
-    // Cek apakah elemen ada sebelum dijalankan
-    if (!document.getElementById("days")) return;
+    // Cache elemen DOM agar tidak dicari ulang setiap detik (Performance Boost)
+    const elDays = document.getElementById("days");
+    const elHours = document.getElementById("hours");
+    const elMinutes = document.getElementById("minutes");
+    const elSeconds = document.getElementById("seconds");
+
+    if (!elDays || !elHours || !elMinutes || !elSeconds) return;
 
     const countdownInterval = setInterval(function () {
         const now = new Date().getTime();
-        const distance = weddingDate - now;
+        const distance = targetDate - now;
+
+        if (distance < 0) {
+            clearInterval(countdownInterval);
+            elDays.innerText = "00";
+            elHours.innerText = "00";
+            elMinutes.innerText = "00";
+            elSeconds.innerText = "00";
+            return;
+        }
 
         const days = Math.floor(distance / (1000 * 60 * 60 * 24));
         const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
         const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
         const seconds = Math.floor((distance % (1000 * 60)) / 1000);
 
-        // Update DOM
-        document.getElementById("days").innerText = days < 10 ? "0" + days : days;
-        document.getElementById("hours").innerText = hours < 10 ? "0" + hours : hours;
-        document.getElementById("minutes").innerText = minutes < 10 ? "0" + minutes : minutes;
-        document.getElementById("seconds").innerText = seconds < 10 ? "0" + seconds : seconds;
+        // Update Text
+        elDays.innerText = days < 10 ? "0" + days : days;
+        elHours.innerText = hours < 10 ? "0" + hours : hours;
+        elMinutes.innerText = minutes < 10 ? "0" + minutes : minutes;
+        elSeconds.innerText = seconds < 10 ? "0" + seconds : seconds;
 
-        // Jika waktu habis
-        if (distance < 0) {
-            clearInterval(countdownInterval);
-            ["days", "hours", "minutes", "seconds"].forEach(id => {
-                document.getElementById(id).innerText = "00";
-            });
-        }
     }, 1000);
 }
 
 
-// === 6. SWIPER GALLERY (INFINITE LOOP) ===
+// === 6. SWIPER GALLERY (INFINITE LOOP MULUS) ===
 if (document.querySelector(".mySwiper")) {
     var swiper = new Swiper(".mySwiper", {
-        // Efek 3D Card
         effect: "coverflow",
-        grabCursor: true,       // Cursor berubah jadi tangan saat drag
-        centeredSlides: true,   // Slide aktif selalu di tengah
-        slidesPerView: "auto",  // Ukuran slide mengikuti CSS (w-60 / w-80)
+        grabCursor: true,
+        centeredSlides: true,
+        slidesPerView: "auto",
         
-        // --- SETTING LOOPING ---
-        loop: true,             // INI KUNCINYA: Agar bisa geser tanpa henti
-        loopedSlides: 3,        // Jumlah slide bayangan agar loop mulus (minimal 2-3)
+        // Loop Setting
+        loop: true,
         
-        // --- AUTOPLAY ---
+        // KITA TURUNKAN SEDIKIT AGAR AMAN JIKA SLIDE DIKIT
+        // Jika total slide HTML ada 6, loopedSlides sebaiknya sekitar 3 atau 4.
+        loopedSlides: 4, 
+        
         autoplay: {
-            delay: 2500,        // Geser otomatis tiap 2.5 detik
-            disableOnInteraction: false, // Tetap autoplay walau user sudah geser
+            delay: 2000,
+            disableOnInteraction: false,
+            pauseOnMouseEnter: false,
         },
 
-        // --- PENGATURAN EFEK 3D ---
         coverflowEffect: {
-            rotate: 0,          // Rotasi slide samping (0 biar tegak)
-            stretch: 0,         // Jarak antar slide
-            depth: 100,         // Kedalaman (zoom out slide samping)
-            modifier: 2,        // Kekuatan efek
-            slideShadows: false, // Matikan shadow bawaan swiper (kita pakai shadow CSS)
+            rotate: 0,
+            stretch: 0,
+            depth: 100,
+            modifier: 2,
+            slideShadows: false, 
         },
 
-        // --- TITIK NAVIGASI ---
         pagination: {
             el: ".swiper-pagination",
             clickable: true,
@@ -228,7 +239,7 @@ function openModal(src) {
     if (!modal || !modalImg) return;
     
     modal.classList.remove("hidden");
-    // Gunakan requestAnimationFrame atau timeout kecil untuk transisi CSS
+    // Timeout kecil agar transisi opacity berjalan
     setTimeout(() => {
         modal.classList.remove("opacity-0");
         modalImg.classList.remove("scale-90");
@@ -248,45 +259,44 @@ function closeModal() {
     setTimeout(() => {
         modal.classList.add("hidden");
         modalImg.src = "";
-    }, 300); // Sesuaikan dengan durasi transition-all di CSS (300ms)
+    }, 300); 
 }
 
-// Tutup modal jika klik di area gelap (luar foto)
 if (modal) {
     modal.addEventListener('click', (e) => {
-        if (e.target === modal) {
-            closeModal();
-        }
+        if (e.target === modal) closeModal();
     });
 }
 
 
-// === 8. FITUR COPY TEXT (GIFT) ===
+// === 8. FITUR COPY TEXT ===
 function copyText(elementId, textToCopy) {
-    // Fallback untuk browser lama atau koneksi non-secure (http)
     if (navigator.clipboard && window.isSecureContext) {
         navigator.clipboard.writeText(textToCopy).then(() => {
             alert("Berhasil disalin: " + textToCopy);
-        }).catch(err => {
-            alert("Gagal menyalin. Silakan salin manual.");
+        }).catch(() => {
+            fallbackCopyText(textToCopy);
         });
     } else {
-        // Metode lama (Fallback)
-        let textArea = document.createElement("textarea");
-        textArea.value = textToCopy;
-        textArea.style.position = "fixed";
-        textArea.style.left = "-9999px";
-        document.body.appendChild(textArea);
-        textArea.focus();
-        textArea.select();
-        try {
-            document.execCommand('copy');
-            alert("Berhasil disalin: " + textToCopy);
-        } catch (err) {
-            alert("Gagal menyalin. Silakan salin manual.");
-        }
-        document.body.removeChild(textArea);
+        fallbackCopyText(textToCopy);
     }
+}
+
+function fallbackCopyText(text) {
+    let textArea = document.createElement("textarea");
+    textArea.value = text;
+    textArea.style.position = "fixed";
+    textArea.style.left = "-9999px";
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    try {
+        document.execCommand('copy');
+        alert("Berhasil disalin: " + text);
+    } catch (err) {
+        alert("Gagal menyalin. Silakan salin manual.");
+    }
+    document.body.removeChild(textArea);
 }
 
 
@@ -296,13 +306,17 @@ function submitRSVP(event) {
 
     const name = document.getElementById('guestName').value;
     const count = document.getElementById('guestCount').value;
-    // Handle radio button selection safely
     const statusRadio = document.querySelector('input[name="status"]:checked');
     const status = statusRadio ? statusRadio.value : "Belum Memilih";
     const message = document.getElementById('guestMessage').value;
 
     if (!name) {
         alert("Mohon isi nama Anda.");
+        return;
+    }
+
+    if (status === "Belum Memilih") {
+        alert("Mohon pilih status kehadiran.");
         return;
     }
 
@@ -313,23 +327,18 @@ function submitRSVP(event) {
         `• Pesan: ${message} %0A%0A` +
         `Terima kasih!`;
 
-    const phoneNumber = "6281234567890"; // Ganti No WA
+    const phoneNumber = "6281234567890"; 
     const waURL = `https://wa.me/${phoneNumber}?text=${waMessage}`;
     
     window.open(waURL, '_blank');
-    
-    // Opsional: document.getElementById('rsvpForm').reset();
 }
 
 
-// === 10. PRIVACY & SECURITY (DISABLE RIGHT CLICK) ===
-document.addEventListener('contextmenu', event => event.preventDefault());
+// === 10. PRIVACY (DISABLE RIGHT CLICK) ===
+// document.addEventListener('contextmenu', event => event.preventDefault());
 
-document.onkeydown = function(e) {
-    // Disable F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U
-    if(event.keyCode == 123) return false;
-    if(e.ctrlKey && e.shiftKey && e.keyCode == 'I'.charCodeAt(0)) return false;
-    if(e.ctrlKey && e.shiftKey && e.keyCode == 'C'.charCodeAt(0)) return false;
-    if(e.ctrlKey && e.shiftKey && e.keyCode == 'J'.charCodeAt(0)) return false;
-    if(e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) return false;
-}
+// document.onkeydown = function(e) {
+//     if(e.keyCode == 123) return false; // F12
+//     if(e.ctrlKey && e.shiftKey && (e.keyCode == 'I'.charCodeAt(0) || e.keyCode == 'C'.charCodeAt(0) || e.keyCode == 'J'.charCodeAt(0))) return false;
+//     if(e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) return false;
+// }
